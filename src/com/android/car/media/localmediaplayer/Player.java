@@ -25,10 +25,12 @@ import android.media.MediaPlayer.OnCompletionListener;
 import android.media.session.MediaSession;
 import android.media.session.MediaSession.QueueItem;
 import android.media.session.PlaybackState;
+import android.media.session.PlaybackState.CustomAction;
 import android.os.Bundle;
 import android.util.Log;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -54,11 +56,14 @@ public class Player extends MediaSession.Callback {
             | PlaybackState.ACTION_PLAY_FROM_MEDIA_ID | PlaybackState.ACTION_SKIP_TO_NEXT
             | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
 
+    private static final String SHUFFLE = "android.car.media.localmediaplayer.shuffle";
+
     private final Context mContext;
     private final MediaSession mSession;
     private final AudioManager mAudioManager;
     private final PlaybackState mErrorState;
     private final DataModel mDataModel;
+    private final CustomAction mShuffle;
 
     private List<QueueItem> mQueue;
     private int mCurrentQueueIdx = 0;
@@ -66,12 +71,14 @@ public class Player extends MediaSession.Callback {
     // TODO: Use multiple media players for gapless playback.
     private final MediaPlayer mMediaPlayer;
 
-
     public Player(Context context, MediaSession session, DataModel dataModel) {
         mContext = context;
         mDataModel = dataModel;
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mSession = session;
+
+        mShuffle = new CustomAction.Builder(SHUFFLE, context.getString(R.string.shuffle),
+                R.drawable.shuffle).build();
 
         mMediaPlayer = new MediaPlayer();
         mMediaPlayer.reset();
@@ -171,7 +178,8 @@ public class Player extends MediaSession.Callback {
                 .setState(PlaybackState.STATE_PLAYING,
                         mMediaPlayer.getCurrentPosition(), PLAYBACK_SPEED)
                 .setActions(PLAYING_ACTIONS)
-                .setActiveQueueItemId(mCurrentQueueIdx)
+                .addCustomAction(mShuffle)
+                .setActiveQueueItemId(mQueue.get(mCurrentQueueIdx).getQueueId())
                 .build();
         mSession.setPlaybackState(state);
     }
@@ -190,6 +198,7 @@ public class Player extends MediaSession.Callback {
         PlaybackState state = new PlaybackState.Builder()
                 .setState(PlaybackState.STATE_PAUSED, currentPosition, PLAYBACK_SPEED_STOPPED)
                 .setActions(PAUSED_ACTIONS)
+                .addCustomAction(mShuffle)
                 .build();
         mSession.setPlaybackState(state);
     }
@@ -291,6 +300,25 @@ public class Player extends MediaSession.Callback {
         }
     }
 
+    /**
+     * This is a naive implementation of shuffle, previously played songs may repeat after the
+     * shuffle operation. Only call this from the main thread.
+     */
+    private void shuffle() {
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, "Shuffling");
+        }
+
+        if (mQueue != null) {
+            QueueItem current = mQueue.remove(mCurrentQueueIdx);
+            Collections.shuffle(mQueue);
+            mQueue.add(0, current);
+            mCurrentQueueIdx = 0;
+            mSession.setQueue(mQueue);
+            updatePlaybackStatePlaying();
+        }
+    }
+
     @Override
     public void onPlayFromMediaId(String mediaId, Bundle extras) {
         super.onPlayFromMediaId(mediaId, extras);
@@ -341,6 +369,17 @@ public class Player extends MediaSession.Callback {
         }
     }
 
+    @Override
+    public void onCustomAction(String action, Bundle extras) {
+        switch (action) {
+            case SHUFFLE:
+                shuffle();
+                break;
+            default:
+                Log.e(TAG, "Unhandled custom action: " + action);
+        }
+    }
+
     private OnAudioFocusChangeListener mAudioFocusListener = new OnAudioFocusChangeListener() {
         @Override
         public void onAudioFocusChange(int focus) {
@@ -353,6 +392,8 @@ public class Player extends MediaSession.Callback {
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                     pausePlayback();
                     break;
+                default:
+                    Log.e(TAG, "Unhandled audio focus type: " + focus);
             }
         }
     };
