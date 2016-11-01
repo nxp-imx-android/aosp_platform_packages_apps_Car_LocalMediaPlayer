@@ -95,10 +95,12 @@ public class LocalMediaBrowserService extends MediaBrowserService {
         mSession.setCallback(mPlayer);
         mSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS
                 | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        mPlayer.maybeRestoreState();
     }
 
     @Override
     public void onDestroy() {
+        mPlayer.saveState();
         mPlayer.destroy();
         mSession.release();
         super.onDestroy();

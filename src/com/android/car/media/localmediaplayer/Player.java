@@ -16,6 +16,7 @@
 package com.android.car.media.localmediaplayer;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.AudioManager.OnAudioFocusChangeListener;
 import android.media.MediaDescription;
@@ -29,7 +30,17 @@ import android.media.session.PlaybackState.CustomAction;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.android.car.media.localmediaplayer.Proto.Playlist;
+import com.android.car.media.localmediaplayer.Proto.Song;
+
+// Proto should be available in AOSP.
+import com.google.protobuf.nano.MessageNano;
+import com.google.protobuf.nano.InvalidProtocolBufferNanoException;
+
 import java.io.IOException;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,6 +49,8 @@ import java.util.List;
  */
 public class Player extends MediaSession.Callback {
     private static final String TAG = "LMPlayer";
+    private static final String SHARED_PREFS_NAME = "com.android.car.media.localmediaplayer.prefs";
+    private static final String CURRENT_PLAYLIST_KEY = "__CURRENT_PLAYLIST_KEY__";
 
     private static final float PLAYBACK_SPEED = 1.0f;
     private static final float PLAYBACK_SPEED_STOPPED = 1.0f;
@@ -67,6 +80,7 @@ public class Player extends MediaSession.Callback {
 
     private List<QueueItem> mQueue;
     private int mCurrentQueueIdx = 0;
+    private final SharedPreferences mSharedPrefs;
 
     // TODO: Use multiple media players for gapless playback.
     private final MediaPlayer mMediaPlayer;
@@ -76,6 +90,7 @@ public class Player extends MediaSession.Callback {
         mDataModel = dataModel;
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mSession = session;
+        mSharedPrefs = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
 
         mShuffle = new CustomAction.Builder(SHUFFLE, context.getString(R.string.shuffle),
                 R.drawable.shuffle).build();
@@ -120,6 +135,103 @@ public class Player extends MediaSession.Callback {
         mMediaPlayer.release();
     }
 
+    public void saveState() {
+        if (mQueue == null || mQueue.isEmpty()) {
+            return;
+        }
+
+        Playlist playlist = new Playlist();
+        playlist.songs = new Song[mQueue.size()];
+
+        int idx = 0;
+        for (QueueItem item : mQueue) {
+            Song song = new Song();
+            song.queueId = item.getQueueId();
+            MediaDescription description = item.getDescription();
+            song.mediaId = description.getMediaId();
+            song.title = description.getTitle().toString();
+            song.subtitle = description.getSubtitle().toString();
+            song.path = description.getExtras().getString(DataModel.PATH_KEY);
+
+            playlist.songs[idx] = song;
+            idx++;
+        }
+        playlist.currentQueueId = mQueue.get(mCurrentQueueIdx).getQueueId();
+        playlist.name = CURRENT_PLAYLIST_KEY;
+
+        // Go to Base64 to ensure that we can actually store the string in a sharedpref. This is
+        // slightly wasteful because of the fact that base64 expands the size a bit but it's a
+        // lot less riskier than abusing the java string to directly store bytes coming out of
+        // proto encoding.
+        String serialized = Base64.getEncoder().encodeToString(MessageNano.toByteArray(playlist));
+        SharedPreferences.Editor editor = mSharedPrefs.edit();
+        editor.putString(CURRENT_PLAYLIST_KEY, serialized);
+        editor.commit();
+    }
+
+    private boolean maybeRebuildQueue(Playlist playlist) {
+        List<QueueItem> queue = new ArrayList<>();
+        int foundIdx = 0;
+        // You need to check if the playlist actually is still valid because the user could have
+        // deleted files or taken out the sd card between runs so we might as well check this ahead
+        // of time before we load up the playlist.
+        for (Song song : playlist.songs) {
+            File tmp = new File(song.path);
+            if (!tmp.exists()) {
+                continue;
+            }
+
+            if (playlist.currentQueueId == song.queueId) {
+                foundIdx = queue.size();
+            }
+
+            Bundle bundle = new Bundle();
+            bundle.putString(DataModel.PATH_KEY, song.path);
+            MediaDescription description = new MediaDescription.Builder()
+                    .setMediaId(song.mediaId)
+                    .setTitle(song.title)
+                    .setSubtitle(song.subtitle)
+                    .setExtras(bundle)
+                    .build();
+            queue.add(new QueueItem(description, song.queueId));
+        }
+
+        if (queue.isEmpty()) {
+            return false;
+        }
+
+        mQueue = queue;
+        mCurrentQueueIdx = foundIdx;  // Resumes from beginning if last playing song was not found.
+
+        return true;
+    }
+
+    public boolean maybeRestoreState() {
+        String serialized = mSharedPrefs.getString(CURRENT_PLAYLIST_KEY, null);
+        if (serialized == null) {
+            return false;
+        }
+
+        try {
+            Playlist playlist = Playlist.parseFrom(Base64.getDecoder().decode(serialized));
+            if (!maybeRebuildQueue(playlist)) {
+                return false;
+            }
+            updateSessionQueueState();
+            onPlay();
+        } catch (IllegalArgumentException | InvalidProtocolBufferNanoException e) {
+            // Couldn't restore the playlist. Not the end of the world.
+            return false;
+        }
+
+        return true;
+    }
+
+    private void updateSessionQueueState() {
+        mSession.setQueueTitle(mContext.getString(R.string.playlist));
+        mSession.setQueue(mQueue);
+    }
+
     private void startPlayback(String key) {
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "startPlayback()");
@@ -146,8 +258,7 @@ public class Player extends MediaSession.Callback {
         QueueItem current = mQueue.get(mCurrentQueueIdx);
         String path = current.getDescription().getExtras().getString(DataModel.PATH_KEY);
         MediaMetadata metadata = mDataModel.getMetadata(current.getDescription().getMediaId());
-        mSession.setQueueTitle(mContext.getString(R.string.playlist));
-        mSession.setQueue(queue);
+        updateSessionQueueState();
 
         try {
             play(path, metadata);
@@ -314,7 +425,7 @@ public class Player extends MediaSession.Callback {
             Collections.shuffle(mQueue);
             mQueue.add(0, current);
             mCurrentQueueIdx = 0;
-            mSession.setQueue(mQueue);
+            updateSessionQueueState();
             updatePlaybackStatePlaying();
         }
     }
