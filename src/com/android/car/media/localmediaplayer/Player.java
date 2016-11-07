@@ -30,8 +30,8 @@ import android.media.session.PlaybackState.CustomAction;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.android.car.media.localmediaplayer.Proto.Playlist;
-import com.android.car.media.localmediaplayer.Proto.Song;
+import com.android.car.media.localmediaplayer.nano.Proto.Playlist;
+import com.android.car.media.localmediaplayer.nano.Proto.Song;
 
 // Proto should be available in AOSP.
 import com.google.protobuf.nano.MessageNano;
