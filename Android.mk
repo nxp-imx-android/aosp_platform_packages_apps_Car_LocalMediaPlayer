@@ -34,8 +34,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res \
-        frameworks/support/design/res \
-        frameworks/support/v7/appcompat/res
+        frameworks/support/design/res
 
 LOCAL_PACKAGE_NAME := LocalMediaPlayer
 
@@ -47,12 +46,17 @@ include packages/apps/Car/libs/car-stream-ui-lib/car-stream-ui-lib.mk
 
 LOCAL_STATIC_JAVA_LIBRARIES += android-support-v4 \
         android-support-design \
-        android-support-v7-appcompat \
         car-stream-lib \
         LocalMediaPlayer-proto
 
-LOCAL_AAPT_FLAGS += --extra-packages android.support.design \
-        --extra-packages android.support.v7.appcompat
+LOCAL_AAPT_FLAGS += --extra-packages android.support.design
+
+# Include support-v7-appcompat, if not already included
+ifeq (,$(findstring android-support-v7-appcompat,$(LOCAL_STATIC_JAVA_LIBRARIES)))
+LOCAL_RESOURCE_DIR += frameworks/support/v7/appcompat/res
+LOCAL_AAPT_FLAGS += --extra-packages android.support.v7.appcompat
+LOCAL_STATIC_JAVA_LIBRARIES += android-support-v7-appcompat
+endif
 
 LOCAL_PROGUARD_ENABLED := disabled
 
