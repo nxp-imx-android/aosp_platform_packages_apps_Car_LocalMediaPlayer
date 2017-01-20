@@ -104,19 +104,24 @@ public class Player extends MediaSession.Callback {
                 .build();
     }
 
+    private boolean requestAudioFocus(Runnable onSuccess) {
+        int result = mAudioManager.requestAudioFocus(mAudioFocusListener, AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN);
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            onSuccess.run();
+            return true;
+        }
+        Log.e(TAG, "Failed to acquire audio focus");
+        return false;
+    }
+
     @Override
     public void onPlay() {
         super.onPlay();
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "onPlay");
         }
-        int result = mAudioManager.requestAudioFocus(mAudioFocusListener, AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN);
-        if (result == AudioManager.AUDIOFOCUS_GAIN) {
-            resumePlayback();
-        } else {
-            Log.e(TAG, "Failed to acquire audio focus");
-        }
+        requestAudioFocus(() -> resumePlayback());
     }
 
     @Override
@@ -218,7 +223,15 @@ public class Player extends MediaSession.Callback {
                 return false;
             }
             updateSessionQueueState();
-            onPlay();
+
+            requestAudioFocus(() -> {
+                try {
+                    updatePlaybackStatePlaying();
+                    playCurrentQueueIndex();
+                } catch (IOException e) {
+                    Log.e(TAG, "Restored queue, but couldn't resume playback.");
+                }
+            });
         } catch (IllegalArgumentException | InvalidProtocolBufferNanoException e) {
             // Couldn't restore the playlist. Not the end of the world.
             return false;
@@ -437,13 +450,7 @@ public class Player extends MediaSession.Callback {
             Log.d(TAG, "onPlayFromMediaId mediaId" + mediaId + " extras=" + extras);
         }
 
-        int result = mAudioManager.requestAudioFocus(mAudioFocusListener, AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN);
-        if (result == AudioManager.AUDIOFOCUS_GAIN) {
-            startPlayback(mediaId);
-        } else {
-            Log.e(TAG, "Failed to acquire audio focus");
-        }
+        requestAudioFocus(() -> startPlayback(mediaId));
     }
 
     @Override
