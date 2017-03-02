@@ -15,7 +15,11 @@
  */
 package com.android.car.media.localmediaplayer;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.AudioManager.OnAudioFocusChangeListener;
@@ -51,6 +55,8 @@ public class Player extends MediaSession.Callback {
     private static final String TAG = "LMPlayer";
     private static final String SHARED_PREFS_NAME = "com.android.car.media.localmediaplayer.prefs";
     private static final String CURRENT_PLAYLIST_KEY = "__CURRENT_PLAYLIST_KEY__";
+    private static final int NOTIFICATION_ID = 42;
+    private static final int REQUEST_CODE = 94043;
 
     private static final float PLAYBACK_SPEED = 1.0f;
     private static final float PLAYBACK_SPEED_STOPPED = 1.0f;
@@ -82,6 +88,10 @@ public class Player extends MediaSession.Callback {
     private int mCurrentQueueIdx = 0;
     private final SharedPreferences mSharedPrefs;
 
+    private NotificationManager mNotificationManager;
+    private Notification.Builder mPlayingNotificationBuilder;
+    private Notification.Builder mPausedNotificationBuilder;
+
     // TODO: Use multiple media players for gapless playback.
     private final MediaPlayer mMediaPlayer;
 
@@ -102,6 +112,46 @@ public class Player extends MediaSession.Callback {
                 .setState(PlaybackState.STATE_ERROR, 0, 0)
                 .setErrorMessage(context.getString(R.string.playback_error))
                 .build();
+
+        mNotificationManager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        // There are 2 forms of the media notification, when playing it needs to show the controls
+        // to pause & skip whereas when paused it needs to show controls to play & skip. Setup
+        // pre-populated builders for both of these up front.
+        Notification.Action prevAction = makeNotificationAction(
+                LocalMediaBrowserService.ACTION_PREV, R.drawable.ic_prev, R.string.prev);
+        Notification.Action nextAction = makeNotificationAction(
+                LocalMediaBrowserService.ACTION_NEXT, R.drawable.ic_next, R.string.next);
+        Notification.Action playAction = makeNotificationAction(
+                LocalMediaBrowserService.ACTION_PLAY, R.drawable.ic_play, R.string.play);
+        Notification.Action pauseAction = makeNotificationAction(
+                LocalMediaBrowserService.ACTION_PAUSE, R.drawable.ic_pause, R.string.pause);
+
+        // While playing, you need prev, pause, next.
+        mPlayingNotificationBuilder = new Notification.Builder(context)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setSmallIcon(R.drawable.ic_sd_storage_black)
+                .addAction(prevAction)
+                .addAction(pauseAction)
+                .addAction(nextAction);
+
+        // While paused, you need prev, play, next.
+        mPausedNotificationBuilder = new Notification.Builder(context)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setSmallIcon(R.drawable.ic_sd_storage_black)
+                .addAction(prevAction)
+                .addAction(playAction)
+                .addAction(nextAction);
+    }
+
+    private Notification.Action makeNotificationAction(String action, int iconId, int stringId) {
+        PendingIntent intent = PendingIntent.getBroadcast(mContext, REQUEST_CODE,
+                new Intent(action), PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification.Action notificationAction = new Notification.Action.Builder(iconId,
+                mContext.getString(stringId), intent)
+                .build();
+        return notificationAction;
     }
 
     private boolean requestAudioFocus(Runnable onSuccess) {
@@ -136,6 +186,7 @@ public class Player extends MediaSession.Callback {
 
     public void destroy() {
         stopPlayback();
+        mNotificationManager.cancelAll();
         mAudioManager.abandonAudioFocus(mAudioFocusListener);
         mMediaPlayer.release();
     }
@@ -293,11 +344,27 @@ public class Player extends MediaSession.Callback {
         }
     }
 
+    private void postMediaNotification(Notification.Builder builder) {
+        if (mQueue == null) {
+            return;
+        }
+
+        MediaDescription current = mQueue.get(mCurrentQueueIdx).getDescription();
+        Notification notification = builder
+                .setStyle(new Notification.MediaStyle().setMediaSession(mSession.getSessionToken()))
+                .setContentTitle(current.getTitle())
+                .setContentText(current.getSubtitle())
+                .build();
+        notification.flags |= Notification.FLAG_NO_CLEAR;
+        mNotificationManager.notify(NOTIFICATION_ID, notification);
+    }
+
     private void updatePlaybackStatePlaying() {
         if (!mSession.isActive()) {
             mSession.setActive(true);
         }
 
+        // Update the state in the media session.
         PlaybackState state = new PlaybackState.Builder()
                 .setState(PlaybackState.STATE_PLAYING,
                         mMediaPlayer.getCurrentPosition(), PLAYBACK_SPEED)
@@ -306,6 +373,9 @@ public class Player extends MediaSession.Callback {
                 .setActiveQueueItemId(mQueue.get(mCurrentQueueIdx).getQueueId())
                 .build();
         mSession.setPlaybackState(state);
+
+        // Update the media styled notification.
+        postMediaNotification(mPlayingNotificationBuilder);
     }
 
     private void pausePlayback() {
@@ -325,6 +395,9 @@ public class Player extends MediaSession.Callback {
                 .addCustomAction(mShuffle)
                 .build();
         mSession.setPlaybackState(state);
+
+        // Update the media styled notification.
+        postMediaNotification(mPausedNotificationBuilder);
     }
 
     private void stopPlayback() {

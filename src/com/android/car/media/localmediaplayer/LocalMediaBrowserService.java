@@ -15,7 +15,10 @@
  */
 package com.android.car.media.localmediaplayer;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.MediaDescription;
 import android.media.browse.MediaBrowser;
 import android.media.session.MediaSession;
@@ -37,6 +40,11 @@ public class LocalMediaBrowserService extends MediaBrowserService {
     static final String ALBUMS_ID = "__ALBUMS__";
     static final String GENRES_ID = "__GENRES__";
 
+    static final String ACTION_PLAY = "com.android.car.media.localmediaplayer.ACTION_PLAY";
+    static final String ACTION_PAUSE = "com.android.car.media.localmediaplayer.ACTION_PAUSE";
+    static final String ACTION_NEXT = "com.android.car.media.localmediaplayer.ACTION_NEXT";
+    static final String ACTION_PREV = "com.android.car.media.localmediaplayer.ACTION_PREV";
+
     private BrowserRoot mRoot = new BrowserRoot(ROOT_ID, null);
     List<MediaBrowser.MediaItem> mRootItems = new ArrayList<>();
 
@@ -44,6 +52,32 @@ public class LocalMediaBrowserService extends MediaBrowserService {
     private Player mPlayer;
     private MediaSession mSession;
     private String mLastCategory;
+
+    private BroadcastReceiver mNotificationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction() == null) {
+                return;
+            }
+
+            switch (intent.getAction()) {
+                case ACTION_PLAY:
+                    mPlayer.onPlay();
+                    break;
+                case ACTION_PAUSE:
+                    mPlayer.onPause();
+                    break;
+                case ACTION_NEXT:
+                    mPlayer.onSkipToNext();
+                    break;
+                case ACTION_PREV:
+                    mPlayer.onSkipToPrevious();
+                    break;
+                default:
+                    Log.w(TAG, "Ingoring intent with unknown action=" + intent);
+            }
+        }
+    };
 
     private void addRootItems() {
         MediaDescription folders = new MediaDescription.Builder()
@@ -96,6 +130,13 @@ public class LocalMediaBrowserService extends MediaBrowserService {
         mSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS
                 | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
         mPlayer.maybeRestoreState();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_PLAY);
+        filter.addAction(ACTION_PAUSE);
+        filter.addAction(ACTION_NEXT);
+        filter.addAction(ACTION_PREV);
+        registerReceiver(mNotificationReceiver, filter);
     }
 
     @Override
@@ -103,6 +144,7 @@ public class LocalMediaBrowserService extends MediaBrowserService {
         mPlayer.saveState();
         mPlayer.destroy();
         mSession.release();
+        unregisterReceiver(mNotificationReceiver);
         super.onDestroy();
     }
 
