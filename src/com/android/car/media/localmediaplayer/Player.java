@@ -426,7 +426,7 @@ public class Player extends MediaSession.Callback {
         // playing and a loading MediaPlayer and juggled between them while also calling
         // setNextMediaPlayer.
 
-        if (mQueue != null) {
+        if (mQueue != null && !mQueue.isEmpty()) {
             // Keep looping around when we run off the end of our current queue.
             mCurrentQueueIdx = (mCurrentQueueIdx + 1) % mQueue.size();
             playCurrentQueueIndex();
