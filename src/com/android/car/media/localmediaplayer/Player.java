@@ -213,6 +213,7 @@ public class Player extends MediaSession.Callback {
             idx++;
         }
         playlist.currentQueueId = mQueue.get(mCurrentQueueIdx).getQueueId();
+        playlist.currentSongPosition = mMediaPlayer.getCurrentPosition();
         playlist.name = CURRENT_PLAYLIST_KEY;
 
         // Go to Base64 to ensure that we can actually store the string in a sharedpref. This is
@@ -277,8 +278,9 @@ public class Player extends MediaSession.Callback {
 
             requestAudioFocus(() -> {
                 try {
-                    updatePlaybackStatePlaying();
                     playCurrentQueueIndex();
+                    mMediaPlayer.seekTo(playlist.currentSongPosition);
+                    updatePlaybackStatePlaying();
                 } catch (IOException e) {
                     Log.e(TAG, "Restored queue, but couldn't resume playback.");
                 }
