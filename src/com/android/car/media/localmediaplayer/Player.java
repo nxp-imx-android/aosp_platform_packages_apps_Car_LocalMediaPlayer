@@ -356,6 +356,7 @@ public class Player extends MediaSession.Callback {
                 .setStyle(new Notification.MediaStyle().setMediaSession(mSession.getSessionToken()))
                 .setContentTitle(current.getTitle())
                 .setContentText(current.getSubtitle())
+                .setShowWhen(false)
                 .build();
         notification.flags |= Notification.FLAG_NO_CLEAR;
         mNotificationManager.notify(NOTIFICATION_ID, notification);
