@@ -547,16 +547,9 @@ public class Player extends MediaSession.Callback {
 
     @Override
     public void onSkipToQueueItem(long id) {
-        int idx = (int) id;
-        MediaSession.QueueItem item = mQueue.get(idx);
-        MediaDescription description = item.getDescription();
-
-        String path = description.getExtras().getString(DataModel.PATH_KEY);
-        MediaMetadata metadata = mDataModel.getMetadata(description.getMediaId());
-
         try {
-            play(path, metadata);
-            mCurrentQueueIdx = idx;
+            mCurrentQueueIdx = (int) id;
+            playCurrentQueueIndex();
         } catch (IOException e) {
             Log.e(TAG, "Failed to play.", e);
             mSession.setPlaybackState(mErrorState);
