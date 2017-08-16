@@ -319,7 +319,7 @@ public class Player extends MediaSession.Callback {
             return;
         }
 
-        mQueue = queue;
+        mQueue = new ArrayList<>(queue);
         mCurrentQueueIdx = foundIdx;
         QueueItem current = mQueue.get(mCurrentQueueIdx);
         String path = current.getDescription().getExtras().getString(DataModel.PATH_KEY);
