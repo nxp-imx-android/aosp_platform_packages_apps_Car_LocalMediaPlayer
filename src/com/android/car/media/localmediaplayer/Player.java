@@ -510,18 +510,16 @@ public class Player extends MediaSession.Callback {
         }
 
         // rebuild the the queue in a shuffled form.
-        List<QueueItem> queue = mDataModel.getQueue();
-        if (queue != null) {
-            QueueItem current = queue.remove(mCurrentQueueIdx);
-            Collections.shuffle(queue);
-            queue.add(0, current);
+        if (mQueue != null && mQueue.size() > 2) {
+            QueueItem current = mQueue.remove(mCurrentQueueIdx);
+            Collections.shuffle(mQueue);
+            mQueue.add(0, current);
             // A QueueItem contains a queue id that's used as the key for when the user selects
             // the current play list. This means the QueueItems must be rebuilt to have their new
             // id's set.
-            for (int i = 0; i < queue.size(); i++) {
-                queue.set(i, new QueueItem(queue.get(i).getDescription(), i));
+            for (int i = 0; i < mQueue.size(); i++) {
+                mQueue.set(i, new QueueItem(mQueue.get(i).getDescription(), i));
             }
-            mQueue = new ArrayList<>(queue);
             mCurrentQueueIdx = 0;
             updateSessionQueueState();
             updatePlaybackStatePlaying();
