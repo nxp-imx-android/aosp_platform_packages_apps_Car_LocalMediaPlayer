@@ -474,12 +474,20 @@ public class Player extends MediaSession.Callback {
         mMediaPlayer.reset();
         mMediaPlayer.setDataSource(path);
         mMediaPlayer.prepare();
-        mMediaPlayer.start();
 
         if (metadata != null) {
             mSession.setMetadata(metadata);
         }
-        updatePlaybackStatePlaying();
+        boolean wasGrantedAudio = requestAudioFocus(() -> {
+            mMediaPlayer.start();
+            updatePlaybackStatePlaying();
+        });
+        if (!wasGrantedAudio) {
+            // player.pause() isn't needed since it should not actually be playing, the
+            // other steps like, updating the notification and play state are needed, thus we
+            // call the pause method.
+            pausePlayback();
+        }
     }
 
     private void safeAdvance() {
@@ -522,7 +530,6 @@ public class Player extends MediaSession.Callback {
             }
             mCurrentQueueIdx = 0;
             updateSessionQueueState();
-            updatePlaybackStatePlaying();
         }
     }
 
