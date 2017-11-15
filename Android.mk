@@ -59,10 +59,8 @@ LOCAL_STATIC_ANDROID_LIBRARIES := \
 LOCAL_USE_AAPT2 := true
 
 # Include support-v7-appcompat, if not already included
-ifeq (,$(findstring android-support-v7-appcompat,$(LOCAL_STATIC_JAVA_LIBRARIES)))
-LOCAL_RESOURCE_DIR += frameworks/support/v7/appcompat/res
-LOCAL_AAPT_FLAGS += --extra-packages android.support.v7.appcompat
-LOCAL_STATIC_JAVA_LIBRARIES += android-support-v7-appcompat
+ifeq (,$(findstring android-support-v7-appcompat,$(LOCAL_STATIC_ANDROID_LIBRARIES)))
+LOCAL_STATIC_ANDROID_LIBRARIES += android-support-v7-appcompat
 endif
 
 LOCAL_PROGUARD_ENABLED := disabled
