@@ -48,7 +48,6 @@ LOCAL_PRIVILEGED_MODULE := true
 include packages/apps/Car/libs/car-stream-ui-lib/car-stream-ui-lib.mk
 
 LOCAL_STATIC_JAVA_LIBRARIES += \
-        car-stream-lib \
         LocalMediaPlayer-proto
 
 LOCAL_STATIC_ANDROID_LIBRARIES := \
