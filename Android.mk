@@ -52,7 +52,7 @@ LOCAL_STATIC_JAVA_LIBRARIES += \
 
 LOCAL_STATIC_ANDROID_LIBRARIES := \
         android-support-v4 \
-        android-support-design
+        $(ANDROID_SUPPORT_DESIGN_TARGETS)
 
 LOCAL_USE_AAPT2 := true
 
