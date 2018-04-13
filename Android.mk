@@ -50,8 +50,8 @@ LOCAL_STATIC_JAVA_LIBRARIES += \
         LocalMediaPlayer-proto
 
 LOCAL_STATIC_ANDROID_LIBRARIES := \
-        android-support-car \
-        android-support-v4
+        androidx.car_car \
+        androidx.legacy_legacy-support-v4
 
 LOCAL_USE_AAPT2 := true
 
