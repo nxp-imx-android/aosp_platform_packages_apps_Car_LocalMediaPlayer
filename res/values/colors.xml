@@ -15,5 +15,5 @@
  * limitations under the License.
 -->
 <resources>
-    <color name="icon_color">@color/car_tint_light</color>
+    <color name="icon_color">@*android:color/car_tint_light</color>
 </resources>
