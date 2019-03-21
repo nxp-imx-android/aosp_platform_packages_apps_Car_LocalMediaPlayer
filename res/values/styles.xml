@@ -17,5 +17,5 @@
 -->
 <resources>
     <!-- Base application theme. -->
-    <style name="LocalMediaPlayerAppTheme" parent="Theme.AppCompat.Light.NoActionBar"/>
+    <style name="LocalMediaPlayerAppTheme" parent="android:Theme.DeviceDefault.Light.NoActionBar"/>
 </resources>
