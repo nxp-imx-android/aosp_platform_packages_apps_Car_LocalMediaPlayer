@@ -40,10 +40,7 @@ android_app {
     privileged: true,
     static_libs: [
         "LocalMediaPlayer-proto",
-        "android-support-car",
-        "android-support-v4",
-        "android.support.car",
-        "android.car",
+        "androidx.legacy_legacy-support-v4",
     ],
     optimize: {
         enabled: false,
@@ -51,9 +48,6 @@ android_app {
     dex_preopt: {
         enabled: false,
     },
-    aaptflags: [
-        "--auto-add-overlay",
-    ],
     product_variables: {
         pdk: {
             enabled: false,
