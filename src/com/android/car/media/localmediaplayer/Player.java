@@ -401,6 +401,7 @@ public class Player extends MediaSession.Callback {
                 .setState(PlaybackState.STATE_PAUSED, currentPosition, PLAYBACK_SPEED_STOPPED)
                 .setActions(PAUSED_ACTIONS)
                 .addCustomAction(mShuffle)
+                .setActiveQueueItemId(mQueue.get(mCurrentQueueIdx).getQueueId())
                 .build();
         mSession.setPlaybackState(state);
 
