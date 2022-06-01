@@ -352,25 +352,27 @@ public class DataModel {
                             if (pathColumn != -1) {
                                 path.putString(PATH_KEY, cursor.getString(pathColumn));
                             }
+                            // MediaId cannot be null
+                            if (cursor.getString(keyColumn) != null) {
+                                MediaDescription.Builder builder = new MediaDescription.Builder()
+                                        .setMediaId(cursor.getString(keyColumn))
+                                        .setTitle(cursor.getString(titleColumn))
+                                        .setExtras(path);
 
-                            MediaDescription.Builder builder = new MediaDescription.Builder()
-                                    .setMediaId(cursor.getString(keyColumn))
-                                    .setTitle(cursor.getString(titleColumn))
-                                    .setExtras(path);
+                                if (subtitleColumn != -1) {
+                                    builder.setSubtitle(cursor.getString(subtitleColumn));
+                                }
 
-                            if (subtitleColumn != -1) {
-                                builder.setSubtitle(cursor.getString(subtitleColumn));
+                                MediaDescription description = builder.build();
+                                results.add(new MediaItem(description, mFlags));
+
+                                // We rebuild the queue here so if the user selects the item then we
+                                // can immediately use this queue.
+                                if (mQueue != null) {
+                                    mQueue.add(new QueueItem(description, idx));
+                                }
+                                idx++;
                             }
-
-                            MediaDescription description = builder.build();
-                            results.add(new MediaItem(description, mFlags));
-
-                            // We rebuild the queue here so if the user selects the item then we
-                            // can immediately use this queue.
-                            if (mQueue != null) {
-                                mQueue.add(new QueueItem(description, idx));
-                            }
-                            idx++;
                         }
                     }
                 } catch (SQLiteException e) {
