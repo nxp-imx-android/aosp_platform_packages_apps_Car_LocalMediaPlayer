@@ -18,6 +18,7 @@ package com.android.car.media.localmediaplayer;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.NotificationChannel;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -60,6 +61,7 @@ public class Player extends MediaSession.Callback {
     private static final String CHANNEL_ID = "com.android.car.media.localmediaplayer.player";
     private static final int NOTIFICATION_ID = 42;
     private static final int REQUEST_CODE = 94043;
+    private static final String CHANNEL_ID = "LMPlayer_chnl_01";
 
     private static final float PLAYBACK_SPEED = 1.0f;
     private static final float PLAYBACK_SPEED_STOPPED = 1.0f;
@@ -116,8 +118,12 @@ public class Player extends MediaSession.Callback {
                 .setErrorMessage(context.getString(R.string.playback_error))
                 .build();
 
+        int importance = NotificationManager.IMPORTANCE_DEFAULT;
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "LMP Service Channel", importance);
+
         mNotificationManager =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.createNotificationChannel(channel);
 
         // There are 2 forms of the media notification, when playing it needs to show the controls
         // to pause & skip whereas when paused it needs to show controls to play & skip. Setup
@@ -132,7 +138,7 @@ public class Player extends MediaSession.Callback {
                 LocalMediaBrowserService.ACTION_PAUSE, R.drawable.ic_pause, R.string.pause);
 
         // While playing, you need prev, pause, next.
-        mPlayingNotificationBuilder = new Notification.Builder(context)
+        mPlayingNotificationBuilder = new Notification.Builder(context, CHANNEL_ID)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setSmallIcon(R.drawable.ic_sd_storage_black)
                 .addAction(prevAction)
@@ -140,7 +146,7 @@ public class Player extends MediaSession.Callback {
                 .addAction(nextAction);
 
         // While paused, you need prev, play, next.
-        mPausedNotificationBuilder = new Notification.Builder(context)
+        mPausedNotificationBuilder = new Notification.Builder(context, CHANNEL_ID)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setSmallIcon(R.drawable.ic_sd_storage_black)
                 .addAction(prevAction)
