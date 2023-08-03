@@ -26,11 +26,6 @@ java_library {
         type: "nano",
         local_include_dirs: ["proto"],
     },
-    product_variables: {
-        pdk: {
-            enabled: false,
-        },
-    },
 }
 
 // Actual Package
@@ -53,10 +48,5 @@ android_app {
     },
     dex_preopt: {
         enabled: false,
-    },
-    product_variables: {
-        pdk: {
-            enabled: false,
-        },
     },
 }
