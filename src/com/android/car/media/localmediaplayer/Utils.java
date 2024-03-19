@@ -23,10 +23,7 @@ import android.content.res.Resources;
 import android.net.Uri;
 
 public class Utils {
-    static final String[] PERMISSIONS = {
-        android.Manifest.permission.READ_EXTERNAL_STORAGE
-    };
-
+    
     static final String ERROR_RESOLUTION_ACTION_INTENT =
             "android.media.extras.ERROR_RESOLUTION_ACTION_INTENT";
 
@@ -39,14 +36,5 @@ public class Utils {
                 + "://" + res.getResourcePackageName(id)
                 + "/" + res.getResourceTypeName(id)
                 + "/" + res.getResourceEntryName(id));
-    }
-
-    static boolean hasRequiredPermissions(Context context) {
-        for (String permission : PERMISSIONS) {
-            if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-        }
-        return true;
     }
 }
