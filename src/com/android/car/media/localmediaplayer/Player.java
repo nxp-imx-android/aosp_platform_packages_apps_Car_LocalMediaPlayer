@@ -177,12 +177,7 @@ public class Player extends MediaSession.Callback {
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "onPlay");
         }
-        // Check permissions every time we try to play
-        if (!Utils.hasRequiredPermissions(mContext)) {
-            setMissingPermissionError();
-        } else {
-            requestAudioFocus(() -> resumePlayback());
-        }
+        requestAudioFocus(() -> resumePlayback());
     }
 
     @Override
@@ -237,26 +232,6 @@ public class Player extends MediaSession.Callback {
         editor.commit();
     }
 
-    private void setMissingPermissionError() {
-        Intent prefsIntent = new Intent();
-        prefsIntent.setClass(mContext, PermissionsActivity.class);
-        prefsIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PendingIntent pendingIntent =
-                PendingIntent.getActivity(mContext, 0, prefsIntent, PendingIntent.FLAG_IMMUTABLE);
-
-        Bundle extras = new Bundle();
-        extras.putString(Utils.ERROR_RESOLUTION_ACTION_LABEL,
-                mContext.getString(R.string.permission_error_resolve));
-        extras.putParcelable(Utils.ERROR_RESOLUTION_ACTION_INTENT, pendingIntent);
-
-        PlaybackState state = new PlaybackState.Builder()
-                .setState(PlaybackState.STATE_ERROR, 0, 0)
-                .setErrorMessage(mContext.getString(R.string.permission_error))
-                .setExtras(extras)
-                .build();
-        mSession.setPlaybackState(state);
-    }
-
     private boolean maybeRebuildQueue(Playlist playlist) {
         List<QueueItem> queue = new ArrayList<>();
         int foundIdx = 0;
@@ -295,10 +270,6 @@ public class Player extends MediaSession.Callback {
     }
 
     public boolean maybeRestoreState() {
-        if (!Utils.hasRequiredPermissions(mContext)) {
-            setMissingPermissionError();
-            return false;
-        }
         String serialized = mSharedPrefs.getString(CURRENT_PLAYLIST_KEY, null);
         if (serialized == null) {
             return false;
